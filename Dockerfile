@@ -9,11 +9,9 @@ RUN set -x && \
     cd /nps && \
     wget --no-check-certificate ${NPS_RELEASE_URL} && \ 
     tar xzf linux_amd64_server.tar.gz && \
-    rm linux_amd64_server.tar.gz && \
-    export PATH=$PATH:/nps
+    ./nps install && \
+    rm -rf /nps
 
-WORKDIR /nps
-
-VOLUME /nps/conf
+VOLUME /etc/nps/conf
 
 CMD nps
