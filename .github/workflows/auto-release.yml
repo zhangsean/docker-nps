@@ -1,15 +1,15 @@
 #=================================================
-# https://github.com/zhangsean/docker-kubectl
-# Description: Auto check latest kubectl and release zhangsean/kubectl using GitHub Actions
+# https://github.com/zhangsean/docker-nps
+# Description: Auto check latest nps release and tag zhangsean/nps using GitHub Actions
 # License: Apache V2.0
 # Author: ZhangSean
 #=================================================
 
-name: Auto release zhangsean/kubectl images
+name: Follow up nps release
 
 on:
   schedule:
-    - cron: 0 23 * * *
+    - cron: 1 15 * * *
   watch:
     types: [started]
     if: github.event.repository.owner.id == github.event.sender.id
@@ -28,37 +28,42 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@master
 
-      - name: Check k8s release
+      - name: Check nps release
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
           git fetch --tags
           export CURRENT=$(git tag | tail -n 1)
           echo "CURRENT=$CURRENT"
-          export LATEST=$(curl -sSL https://dl.k8s.io/release/stable.txt)
+          export LATEST=$(curl -sSI https://github.com/ehang-io/nps/releases/latest | sed -n '/nps/s/.*\(v.*\)./\1/p')
           echo "LATEST=$LATEST"
           if [ "$LATEST" != "$CURRENT" ]; then
-            echo "New k8s release: $LATEST"
+            echo "New nps release: $LATEST"
             echo "CURRENT=$CURRENT" >> $GITHUB_ENV
             echo "LATEST=$LATEST" >> $GITHUB_ENV
           else
-            echo "No new k8s release"
+            echo "No new nps release"
             echo "LATEST=" >> $GITHUB_ENV
           fi
 
-      - name: Bump to new kubectl version
+      - name: Bump to new nps version
         if: success() && env.CURRENT != '' && env.LATEST != ''
         env:
           DEBIAN_FRONTEND: noninteractive
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "Changing version from $CURRENT to $LATEST"
-          sed -i "/K8S_RELEASE/s/$CURRENT/$LATEST/g" Dockerfile
+          echo "Bump nps version from $CURRENT to $LATEST"
+          sed -i "/NPS_VERSION/s/$CURRENT/$LATEST/g" Dockerfile
+          sed -i "/latest/a - $LATEST" README.md
           # commit and push
           git config user.email zxf2342@qq.com
           git config user.name zhangsean
-          git commit -a -m "Bump to kubectl $LATEST"
+          git commit -a -m "Bump to nps $LATEST"
           git push
+          git tag "$LATEST"
+          git push --tags
+          export SHA=$(git branch -v | awk '{print $3}')
+          echo "SHA=$SHA" >> $GITHUB_ENV
 
       - name: Create Release
         uses: actions/create-release@v1
@@ -69,32 +74,28 @@ jobs:
           tag_name: ${{ env.LATEST }}
           release_name: ${{ env.LATEST }}
           body: |
-            Bump to kubectl ${{ env.LATEST }}
+            Bump to nps ${{ env.LATEST }}
           draft: false
           prerelease: false
 
-      -
-        name: Set up QEMU
+      - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
         if: success() && env.LATEST != ''
-      -
-        name: Set up Docker Buildx
+      - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
         if: success() && env.LATEST != ''
-      -
-        name: Login to DockerHub
+      - name: Login to DockerHub
         uses: docker/login-action@v1
         if: success() && env.LATEST != ''
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      -
-        name: Build and push
+      - name: Build and push
         uses: docker/build-push-action@v2
         if: success() && env.LATEST != ''
         with:
           context: .
           push: true
           tags: |
-            zhangsean/kubectl:latest,
-            zhangsean/kubectl:${{ env.LATEST }}
+            zhangsean/nps:latest,
+            zhangsean/nps:${{ env.LATEST }}
