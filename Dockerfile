@@ -27,8 +27,7 @@ RUN wget https://github.com/ehang-io/nps/releases/download/${NPS_VERSION}/linux_
  && rm -rf linux_amd64_server.tar.gz \
  && wget https://github.com/ehang-io/nps/releases/download/${NPS_VERSION}/linux_amd64_client.tar.gz \
  && tar -zxvf linux_amd64_client.tar.gz \
- && rm -rf linux_amd64_client.tar.gz \
- && chown -R nps:nps /nps
+ && rm -rf linux_amd64_client.tar.gz
 
 EXPOSE 80 443 8024 8080
 
